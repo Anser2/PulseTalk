@@ -11,12 +11,14 @@ os.makedirs('files', exist_ok=True)
 conn = sqlite3.connect('contacts.db', check_same_thread=False)
 c = conn.cursor()
 
+
 # Create or initialize the contacts table
 c.execute("""
     CREATE TABLE IF NOT EXISTS contacts (
         username TEXT PRIMARY KEY,
         password TEXT,
-        ip_address TEXT
+        ip_address TEXT,
+        port INTEGER
      )
 """)
 def handle_upload(client_socket):
@@ -36,9 +38,9 @@ def handle_download(client_socket):
         client_socket.sendall(f.read())           
 
 # Function to add a new contact
-def add_contact(username, password, ip_address):
-    c.execute("INSERT INTO contacts VALUES (?, ?, ?)", (username, password, ip_address))
-    conn.commit()
+def add_contact(username, password, client_address):
+    ip_address, port = client_address  # unpack the tuple
+    c.execute("INSERT INTO contacts VALUES (?, ?, ?, ?)", (username, password, ip_address, port))
 
 # Function to authenticate a user
 def authenticate(username, password):
@@ -75,19 +77,25 @@ def handle_client(client_socket, client_address):
         username, password = data.split(',')
         
         if authenticate(username, password):
-            update_ip_address(username, client_address[0])
+            update_ip_address(username, client_address)
         else:
-            add_contact(username, password, client_address[0])
+            add_contact(username, password, client_address)
         
+        # Add the client socket to the dictionary
+        client_sockets[username] = client_socket
         while True:
             data = client_socket.recv(1024)
             if data == b'upload':
                 handle_upload(client_socket)
             elif data == b'download':
                 handle_download(client_socket)
+            elif b',' in data:
+                recipient, message = data.decode().split(',',1)
+                send_to_user(recipient, f"{username}: {message}".encode())
             else:
-                broadcast(data)
-            
+                broadcast(data)    
+                
+    
             if not data:
                 break
             print(f"Received message from {client_address}: {data.decode()}")
@@ -101,17 +109,29 @@ def broadcast(message):
     for client in clients:
         client.send(message)
 
+#     for client in clients:
 clients=[]
+client_sockets = {}
+def send_to_user(username, message):
+    if username in client_sockets:
+        client_sockets[username].send(message)
+   
+
+
+
 # Set up server
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(('0.0.0.0', 5555))
 server.listen(5)
 
 print("Server started, listening on port 5555")
+table_values= c.execute("SELECT * FROM contacts").fetchall()
+print(table_values)
 
 while True:
     client_socket, client_address = server.accept()
     clients.append(client_socket)
     # Start a new thread to handle the client
-    client_thread = threading.Thread(target=handle_client , args=(client_socket, client_address[0]))
+    client_thread = threading.Thread(target=handle_client , args=(client_socket, client_address))
     client_thread.start()
+

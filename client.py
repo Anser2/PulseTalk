@@ -47,8 +47,18 @@ def download_file(filename):
 
 def send_message():
     message = message_entry.get()
-    client_socket.send(("--> "+ username+": " +message ).encode())
+    recipient = recipient_entry.get()
+    # Include the recipient's username with the message
+    # Only include the recipient's username and the comma if the recipient's username is not an empty string
+    if recipient:
+        client_socket.send(f"{recipient},{message}".encode())
+    else:
+        client_socket.send(message.encode())
     message_entry.delete(0, tk.END)
+    recipient_entry.delete(0, tk.END)
+    # client_socket.send(f"{recipient},{message}".encode())
+    # message_entry.delete(0, tk.END)
+    # recipient_entry.delete(0, tk.END)
 
 
 def receive_messages():
@@ -56,11 +66,9 @@ def receive_messages():
         try:
             message = client_socket.recv(1024).decode()
             
-            chat_box.insert(tk.END, message + '\n')
-        except Exception as e:
-            print(f"Error: {str(e)}")
-            client_socket.send(("--> "+ username+": " + "An error occurred" ).encode())
-            client_socket.close()
+            chat_box.insert(tk.END, "--> "+ username+": "+message + '\n')
+        except ConnectionResetError:
+            print("Connection lost. Please check the server.")
             break
             client_socket.send(("--> "+ username+": " +message ).encode())
             message_entry.delete(0, tk.END)
@@ -77,7 +85,7 @@ password = input("Enter your password: ")
 # Send the username and password to the server
 client_socket.send(f"{username},{password}".encode())
 # Send the client ID to the server
-client_socket.send((username + " joined the session ^_^").encode()) 
+client_socket.send((username + " joined the session 😃").encode()) 
 
 # Create GUI
 root = tk.Tk()
@@ -89,15 +97,22 @@ chat_box.pack(padx=10, pady=10)
 message_entry = tk.Entry(root, width=40)
 message_entry.pack(padx=10, pady=5)
 
+# Add a new entry field for the recipient's username
+recipient_entry = tk.Entry(root, width=40)
+recipient_entry.pack(padx=10, pady=5)
+
 send_button = tk.Button(root, text="Send", command=send_message)
 send_button.pack(padx=10, pady=5)
+
+
+
 # New entry field for the filename to upload
 upload_entry = tk.Entry(root, width=40)
 upload_entry.pack(padx=10, pady=5)
 
 select_button = tk.Button(root, text="Select File", command=select_file)
 select_button.pack(padx=10, pady=5)
-
+ 
 upload_button = tk.Button(root, text="Upload", command=lambda: upload_file(upload_entry.get()))
 upload_button.pack(padx=10, pady=5)
 
@@ -110,7 +125,7 @@ download_button.pack(padx=10, pady=5)
 #download_button = tk.Button(root, text="Download", command=lambda: download_file(download_entry.get()))
 #download_button.pack(padx=10, pady=5)
 
-exit_button = tk.Button(root, text="Exit", command=lambda: [client_socket.send((client_id + " left the chat :(").encode()), root.quit()])
+exit_button = tk.Button(root, text="Exit", command=lambda: [client_socket.send((username + " left the chat 😢").encode()), root.quit()])
 exit_button.pack(padx=10, pady=5)
 
 
