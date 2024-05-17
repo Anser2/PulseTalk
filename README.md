@@ -1,4 +1,4 @@
-# Overview
+# PulseTalk -> Overview
 This project is a Chat Room application implemented using Python. The application allows users to connect to a central server, send messages to other users or broadcast messages to all connected users, upload and download files, and block specific users. It features a graphical user interface (GUI) built with Tkinter, and uses sockets for network communication. The server manages user authentication, file storage, and maintains a list of blocked users.
 
 ![image](https://github.com/Anser2/PulseTalk/assets/130187355/95e38050-1ab7-4c23-b6b0-13e61fdf992a)
