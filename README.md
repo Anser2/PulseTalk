@@ -18,7 +18,7 @@ SQLite3
 
 # Installation
 Clone the repository:
-git clone https://github.com/yourusername/PulseTalk.git
+git clone https://github.com/yourusername/PulseTalk.git ,
 cd PulseTalk
 
 Ensure you have Python 3 installed. You can download it from python.org.
