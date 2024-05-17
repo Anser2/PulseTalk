@@ -1,140 +1,115 @@
 import tkinter as tk
-from tkinter import scrolledtext
+from tkinter import scrolledtext, filedialog
+from tkinter import ttk
 import socket
-import threading 
-import uuid  # Import the uuid module for generating unique IDs
-from tkinter import filedialog
+import threading
+import uuid
 
 def select_file():
     filename = filedialog.askopenfilename()
     upload_entry.delete(0, tk.END)  # Clear the entry field
     upload_entry.insert(0, filename)  # Insert the selected filename
-    
-    # Send the filename and file data to the server
-    client_socket.send(filename.encode())
-
 
 def upload_file(filename):
-    # Check if the filename is not empty
     if filename:
-        # Send the 'upload' command to the server
         client_socket.send('upload'.encode())
-        
-        # Read the file data
         with open(filename, 'rb') as f:
             file_data = f.read()
-        
-        # Send the filename and file data to the server
         client_socket.send(filename.encode())
         client_socket.send(file_data)
-
-        # Set the download_entry field to the filename of the uploaded file
-        download_entry.delete(0, tk.END)  # Clear the entry field
-        download_entry.insert(0, filename)  # Insert the filename
+        download_entry.delete(0, tk.END)
+        download_entry.insert(0, filename)
     else:
         print("No file selected for upload.")
 
 def download_file(filename):
-    # Send the filename to the server
+    client_socket.send('download'.encode())
     client_socket.send(filename.encode())
-    
-    # Receive the file data from the server
     file_data = client_socket.recv(1024)
-    
-    # Save the file locally
     with open(filename, 'wb') as f:
         f.write(file_data)
 
 def send_message():
     message = message_entry.get()
     recipient = recipient_entry.get()
-    # Include the recipient's username with the message
-    # Only include the recipient's username and the comma if the recipient's username is not an empty string
     if recipient:
         client_socket.send(f"{recipient},{message}".encode())
     else:
         client_socket.send(message.encode())
     message_entry.delete(0, tk.END)
     recipient_entry.delete(0, tk.END)
-    # client_socket.send(f"{recipient},{message}".encode())
-    # message_entry.delete(0, tk.END)
-    # recipient_entry.delete(0, tk.END)
 
+def block_user():
+    blocked_username = recipient_entry.get()
+    if blocked_username:
+        client_socket.send(f"block,{blocked_username}".encode())
+        recipient_entry.delete(0, tk.END)
 
 def receive_messages():
     while True:
         try:
             message = client_socket.recv(1024).decode()
-            
-            chat_box.insert(tk.END, "--> "+ username+": "+message + '\n')
+            chat_box.insert(tk.END, message + '\n')
         except ConnectionResetError:
             print("Connection lost. Please check the server.")
             break
-            client_socket.send(("--> "+ username+": " +message ).encode())
-            message_entry.delete(0, tk.END)
 
-# Generate a unique ID for the client
-client_id = str(uuid.uuid4())[:5]  # Generate a unique IDaa with only the first 8 characters
+client_id = str(uuid.uuid4())[:5]
 
-# Set up client
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client_socket.connect(('localhost', 5555))
 username = input("Enter your username: ")
 password = input("Enter your password: ")
 
-# Send the username and password to the server
 client_socket.send(f"{username},{password}".encode())
-# Send the client ID to the server
 client_socket.send((username + " joined the session 😃").encode()) 
 
-# Create GUI
 root = tk.Tk()
-root.title("Chat Room for "+ username)
+root.title("Chat Room for " + username)
+root.configure(bg="#282424")
 
-chat_box = scrolledtext.ScrolledText(root, width=50, height=20)
-chat_box.pack(padx=10, pady=10)
+style = ttk.Style()
+style.configure("TButton", font=("Segoe UI", 9), padding=3, relief="raised")
+style.configure("TLabel", font=("Segoe UI", 9), padding=3, relief="raised")
+style.configure("TEntry", font=("Segoe UI", 9), relief="raised")
 
-message_entry = tk.Entry(root, width=40)
+chat_box = scrolledtext.ScrolledText(root, width=30, height=17, bg="#FFFFFF", fg="#000000", font=("Segoe UI", 10), padx=8, pady=8)
+chat_box.pack(padx=8, pady=8)
+
+ttk.Label(root, text="Enter message below:", background="#ECE5DD").pack(padx=10, pady=5)
+message_entry = ttk.Entry(root, width=40)
 message_entry.pack(padx=10, pady=5)
 
-# Add a new entry field for the recipient's username
-recipient_entry = tk.Entry(root, width=40)
+ttk.Label(root, text="Enter recipient username (Leave blank for broadcast):", background="#ECE5DD").pack(padx=10, pady=5)
+recipient_entry = ttk.Entry(root, width=40)
 recipient_entry.pack(padx=10, pady=5)
 
-send_button = tk.Button(root, text="Send", command=send_message)
+send_button = ttk.Button(root, text="Send", command=send_message, style="TButton")
 send_button.pack(padx=10, pady=5)
 
+block_button = ttk.Button(root, text="Block", command=block_user, style="TButton")
+block_button.pack(padx=8, pady=6)
 
-
-# New entry field for the filename to upload
-upload_entry = tk.Entry(root, width=40)
+ttk.Label(root, text="Upload file:", background="#ECE5DD").pack(padx=10, pady=5)
+upload_entry = ttk.Entry(root, width=40)
 upload_entry.pack(padx=10, pady=5)
 
-select_button = tk.Button(root, text="Select File", command=select_file)
+select_button = ttk.Button(root, text="Select File", command=select_file, style="TButton")
 select_button.pack(padx=10, pady=5)
  
-upload_button = tk.Button(root, text="Upload", command=lambda: upload_file(upload_entry.get()))
+upload_button = ttk.Button(root, text="Upload", command=lambda: upload_file(upload_entry.get()), style="TButton")
 upload_button.pack(padx=10, pady=5)
 
-# New entry field for the filename to download
-download_entry = tk.Entry(root, width=40)
+ttk.Label(root, text="Download file:", background="#ECE5DD").pack(padx=10, pady=5)
+download_entry = ttk.Entry(root, width=40)
 download_entry.pack(padx=10, pady=5)
-download_button = tk.Button(root, text="Download", command=lambda: threading.Thread(target=download_file, args=(download_entry.get(),)).start())
-download_button.pack(padx=10, pady=5)
-# New button for downloading files
-#download_button = tk.Button(root, text="Download", command=lambda: download_file(download_entry.get()))
-#download_button.pack(padx=10, pady=5)
+download_button = ttk.Button(root, text="Download", command=lambda: threading.Thread(target=download_file, args=(download_entry.get(),)).start(), style="TButton")
+download_button.pack(padx=10, pady=4)
 
-exit_button = tk.Button(root, text="Exit", command=lambda: [client_socket.send((username + " left the chat 😢").encode()), root.quit()])
-exit_button.pack(padx=10, pady=5)
+exit_button = ttk.Button(root, text="Exit", command=lambda: [client_socket.send((username + " left the chat 😢").encode()), root.quit()], style="TButton")
+exit_button.pack(padx=10, pady=4)
 
-
-
-
-# Start thread for receiving messages 
 receive_thread = threading.Thread(target=receive_messages)
 receive_thread.start()
 
-
-root.mainloop() 
-
+root.mainloop()
